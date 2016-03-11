@@ -1,0 +1,19 @@
+- name: Create Nginx sites for challenges
+  template:
+    src: nginx-challenge-site.conf.j2
+    dest: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.key }}.conf"
+  with_dict: "{{ wordpress_sites }}"
+
+- name: Enable Nginx site
+  file:
+    src: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.key }}.conf"
+    dest: "{{ nginx_path }}/sites-enabled/letsencrypt-{{ item.key }}.conf"
+    owner: root
+    group: root
+    state: link
+  with_dict: "{{ wordpress_sites }}"
+
+- name: trigger nginx reload
+  service:
+    name: nginx
+    state: reloaded

@@ -1,0 +1,64 @@
+- name: generate private keys
+  shell: openssl genrsa 4096 > {{ letsencrypt_keys_dir }}/{{ item.key }}.key
+  args:
+    creates: "{{ letsencrypt_keys_dir }}/{{ item.key }}.key"
+  when: item.value.ssl.enabled | default(false) and item.value.ssl.provider == 'letsencrypt'
+  with_dict: "{{ wordpress_sites }}"
+  tags: [letsencrypt_keys]
+
+- name: ensure correct permissions on private keys
+  file:
+    path: "{{ letsencrypt_keys_dir }}/{{ item.key }}.key"
+    mode: 0600
+  when: item.value.ssl.enabled | default(false) and item.value.ssl.provider == 'letsencrypt'
+  with_dict: "{{ wordpress_sites }}"
+  tags: [letsencrypt_keys]
+
+- name: generate csrs for single domain keys
+  shell: openssl req -new -sha256 -key '{{ letsencrypt_keys_dir }}/{{ item.key }}.key' -subj '/CN={{ item.value.site_hosts[0] }}' > {{ acme_tiny_data_directory }}/csrs/{{ item.key }}.csr
+  args:
+    creates: "{{ acme_tiny_data_directory }}/csrs/{{ item.key }}.csr"
+  when: item.value.ssl.enabled | default(false) and item.value.ssl.provider == 'letsencrypt' and item.value.site_hosts | length == 1
+  with_dict: "{{ wordpress_sites }}"
+  tags: [letsencrypt_keys]
+
+- name: generate csrs for multi domain keys
+  shell: "openssl req -new -sha256 -key '{{ letsencrypt_keys_dir }}/{{ item.key }}.key' -subj '/' -reqexts SAN -config <(cat /etc/ssl/openssl.cnf <(printf '[SAN]\nsubjectAltName=DNS:{{ item.value.site_hosts|join(',DNS:') }}')) > {{ acme_tiny_data_directory }}/csrs/{{ item.key }}.csr"
+  args:
+    # we must use bash here because dash (default on Debian) throws an error "unexpected ( on line 1"
+    executable: /bin/bash
+    creates: "{{ acme_tiny_data_directory }}/csrs/{{ item.key }}.csr"
+  when: item.value.ssl.enabled | default(false) and item.value.ssl.provider == 'letsencrypt' and item.value.site_hosts | length > 1
+  with_dict: "{{ wordpress_sites }}"
+  tags: [letsencrypt_keys]
+
+- name: generate the initial certificate
+  command: ./renew-certs.py
+  args:
+    chdir: "{{ acme_tiny_data_directory }}"
+  register: generate_initial_cert
+  failed_when: (generate_initial_cert.stdout is defined and
+    ('error' in generate_initial_cert.stdout or 'Error' in generate_initial_cert.stdout
+      or 'Error' in generate_initial_cert.stderr))
+
+- name: generated chained certificates
+  shell: cat {{ letsencrypt_certs_dir }}/{{ item.key }}.cert {{ letsencrypt_intermediate_cert_path }} > {{ letsencrypt_certs_dir }}/{{ item.key }}-bundled.cert
+  args:
+    creates: "{{ letsencrypt_certs_dir }}/{{ item.key }}-bundled.cert"
+  when: item.value.ssl.enabled | default(false) and item.value.ssl.provider == 'letsencrypt'
+  with_dict: "{{ wordpress_sites }}"
+  tags: [letsencrypt_keys]
+
+- name: Disable Nginx site
+  file:
+    path: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.key }}.conf"
+    state: absent
+  with_dict: "{{ wordpress_sites }}"
+
+- name: test nginx conf
+  command: nginx -t
+
+- name: trigger nginx reload
+  service:
+    name: nginx
+    state: reloaded

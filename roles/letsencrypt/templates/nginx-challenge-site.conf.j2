@@ -1,0 +1,9 @@
+server {
+  listen 80;
+  server_name {{ item.value.site_hosts | join(' ') }} {{ item.value.site_hosts | reverse_www | join(' ') }};
+
+  location ^~ /.well-known/acme-challenge/ {
+    alias {{ acme_tiny_challenges_directory }};
+    try_files $uri =404;
+  }
+}

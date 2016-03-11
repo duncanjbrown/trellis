@@ -1,0 +1,79 @@
+- name: create data directory
+  file:
+    path: "{{ acme_tiny_data_directory }}"
+    state: directory
+
+- name: create csr directory
+  file:
+    path: "{{ acme_tiny_data_directory }}/csrs"
+    state: directory
+
+- name: create program directory
+  file:
+    path: "{{ acme_tiny_software_directory }}"
+    state: directory
+
+- name: create challenges directory
+  file:
+    path: "{{ acme_tiny_challenges_directory }}"
+    state: directory
+
+- name: ensure correct permissions on data directory
+  file:
+    path: "{{ acme_tiny_data_directory }}"
+    state: directory
+    mode: 0700
+    recurse: true
+
+- name: create certs directory
+  file:
+    mode: 0700
+    path: "{{ letsencrypt_certs_dir }}"
+    state: directory
+
+- name: clone acme-tiny repository
+  git:
+    dest: "{{ acme_tiny_software_directory }}"
+    repo: "{{ acme_tiny_repo }}"
+    version: "{{ acme_tiny_commit }}"
+    accept_hostkey: yes
+
+- name: copy Letsencrypt account key source file
+  copy:
+    src: "{{ letsencrypt_account_key_source_file }}"
+    dest: "{{ letsencrypt_account_key }}"
+  when: letsencrypt_account_key_source_file is defined
+
+- name: copy Letsencrypt account key source contents
+  copy:
+    content: "{{ letsencrypt_account_key_source_content | trim }}"
+    dest: "{{ letsencrypt_account_key }}"
+  when: letsencrypt_account_key_source_content is defined
+
+- name: generate a new account key
+  shell: openssl genrsa 4096 > {{ letsencrypt_account_key }}
+  args:
+    creates: "{{ letsencrypt_account_key }}"
+  register: generate_account_key
+
+- name: print account public key
+  command: openssl rsa -in {{ letsencrypt_account_key }} -pubout
+  register: account_public_key
+  when: generate_account_key | changed
+
+- name: Please register the account public key with Letsencrypt, using for example https://gethttpsforfree.com/
+  debug:
+    var: account_public_key.stdout
+  when: generate_account_key | changed
+
+- name: generate certificate renewal script
+  template:
+    src: renew-certs.py
+    dest: "{{ acme_tiny_data_directory }}/renew-certs.py"
+    mode: 0700
+
+- name: download intermediate certificate
+  get_url:
+    url: "{{ letsencrypt_intermediate_cert_url }}"
+    dest: "{{ letsencrypt_intermediate_cert_path }}"
+    sha256sum: "{{ letsencrypt_intermediate_cert_sha256sum }}"
