@@ -1,17 +1,26 @@
+- name: Check for existing certificates
+  stat:
+    path: "{{ letsencrypt_certs_dir }}/{{ item.key }}.cert"
+  register: letsencrypt_existing_certs
+  with_dict: "{{ wordpress_sites }}"
+
 - name: Create Nginx sites for challenges
   template:
     src: nginx-challenge-site.conf.j2
-    dest: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.key }}.conf"
-  with_dict: "{{ wordpress_sites }}"
+    dest: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.item.key }}.conf"
+  when: not item.stat.exists
+  with_items: "{{ letsencrypt_existing_certs.results }}"
 
 - name: Enable Nginx site
   file:
-    src: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.key }}.conf"
-    dest: "{{ nginx_path }}/sites-enabled/letsencrypt-{{ item.key }}.conf"
+    src: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.item.key }}.conf"
+    dest: "{{ nginx_path }}/sites-enabled/letsencrypt-{{ item.item.key }}.conf"
     state: link
-  with_dict: "{{ wordpress_sites }}"
+  when: not item.stat.exists
+  with_items: "{{ letsencrypt_existing_certs.results }}"
 
 - name: trigger nginx reload
   service:
     name: nginx
     state: reloaded
+  changed_when: false

@@ -20,10 +20,9 @@
 
 - name: ensure correct permissions on data directory
   file:
+    mode: 0700
     path: "{{ acme_tiny_data_directory }}"
     state: directory
-    mode: 0700
-    recurse: true
 
 - name: create certs directory
   file:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import time
 
 from subprocess import Popen, PIPE, STDOUT
@@ -10,6 +11,7 @@ sites = {{ wordpress_sites }}
 sites = dict((k, v) for k, v in sites.items() if v['ssl']['provider'] == 'letsencrypt')
 
 script = "{{ acme_tiny_software_directory }}/acme_tiny.py"
+failed = False
 
 for name, site in sites.iteritems():
     cert_path = os.path.join(certs_dir, name + ".cert")
@@ -48,7 +50,14 @@ for name, site in sites.iteritems():
     if p.wait() != 0:
         print "error while generating certificate for " + host
         print p.stderr.read()
+        failed = True
     else:
         f = open(cert_path, 'w')
         f.write(cert)
         f.close()
+        print "Created certificate for " + host
+
+if failed:
+    sys.exit(1)
+else:
+    sys.exit(0)

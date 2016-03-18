@@ -65,8 +65,10 @@
 
 - name: test nginx conf
   command: nginx -t
+  changed_when: false
 
 - name: trigger nginx reload
   service:
     name: nginx
     state: reloaded
+  changed_when: false
