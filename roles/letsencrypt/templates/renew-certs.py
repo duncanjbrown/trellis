@@ -6,6 +6,7 @@ import time
 
 from subprocess import Popen, PIPE, STDOUT
 
+intermediate_cert_path = "{{ letsencrypt_intermediate_cert_path }}"
 certs_dir = "{{ letsencrypt_certs_dir }}"
 sites = {{ wordpress_sites }}
 sites = dict((k, v) for k, v in sites.items() if v['ssl']['provider'] == 'letsencrypt')
@@ -15,6 +16,7 @@ failed = False
 
 for name, site in sites.iteritems():
     cert_path = os.path.join(certs_dir, name + ".cert")
+    bundled_cert_path = os.path.join(certs_dir, name + "-bundled.cert")
     hosts = site['site_hosts']
 
     if os.access(cert_path, os.F_OK):
@@ -52,9 +54,17 @@ for name, site in sites.iteritems():
         print p.stderr.read()
         failed = True
     else:
-        f = open(cert_path, 'w')
-        f.write(cert)
-        f.close()
+        cert_file = open(cert_path, 'w')
+        cert_file.write(cert)
+        cert_file.close()
+
+        intermediate_cert = open(intermediate_cert_path, 'r').read()
+        bundled_cert = "".join([cert, intermediate_cert])
+
+        bundled_file = open(bundled_cert_path, 'w')
+        bundled_file.write(bundled_cert)
+        bundled_file.close()
+
         print "Created certificate for " + host
 
 if failed:

@@ -39,14 +39,6 @@
   register: generate_initial_cert
   changed_when: generate_initial_cert.stdout is defined and 'Created' in generate_initial_cert.stdout
 
-- name: generated chained certificates
-  shell: cat {{ letsencrypt_certs_dir }}/{{ item.key }}.cert {{ letsencrypt_intermediate_cert_path }} > {{ letsencrypt_certs_dir }}/{{ item.key }}-bundled.cert
-  args:
-    creates: "{{ letsencrypt_certs_dir }}/{{ item.key }}-bundled.cert"
-  when: item.value.ssl.enabled | default(false) and item.value.ssl.provider == 'letsencrypt'
-  with_dict: "{{ wordpress_sites }}"
-  tags: [letsencrypt_keys]
-
 - name: Disable Nginx site
   file:
     path: "{{ nginx_path }}/sites-enabled/letsencrypt-{{ item.key }}.conf"
