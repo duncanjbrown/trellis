@@ -8,8 +8,6 @@
   file:
     src: "{{ nginx_path }}/sites-available/letsencrypt-{{ item.key }}.conf"
     dest: "{{ nginx_path }}/sites-enabled/letsencrypt-{{ item.key }}.conf"
-    owner: root
-    group: root
     state: link
   with_dict: "{{ wordpress_sites }}"
 
