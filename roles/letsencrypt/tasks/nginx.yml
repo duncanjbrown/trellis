@@ -19,7 +19,7 @@
   when: not item.stat.exists
   with_items: "{{ letsencrypt_existing_certs.results }}"
 
-- name: trigger nginx reload
+- name: Trigger nginx reload
   service:
     name: nginx
     state: reloaded

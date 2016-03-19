@@ -2,7 +2,7 @@
 - include: nginx.yml
 - include: certificates.yml
 
-- name: install cronjob for key generation
+- name: Install cronjob for key generation
   cron:
     job: "cd {{ acme_tiny_data_directory }} && ./renew-certs.py"
     day: "{{ letsencrypt_cronjob_daysofmonth }}"
