@@ -1,34 +1,17 @@
-- name: Create data directory
+- name: Create directories and set permissions
   file:
-    path: "{{ acme_tiny_data_directory }}"
+    mode: "{{ item.mode | default(omit) }}"
+    path: "{{ item.path }}"
     state: directory
-
-- name: Create CSR directory
-  file:
-    path: "{{ acme_tiny_data_directory }}/csrs"
-    state: directory
-
-- name: Create program directory
-  file:
-    path: "{{ acme_tiny_software_directory }}"
-    state: directory
-
-- name: Create challenges directory
-  file:
-    path: "{{ acme_tiny_challenges_directory }}"
-    state: directory
-
-- name: Ensure correct permissions on data directory
-  file:
-    mode: 0700
-    path: "{{ acme_tiny_data_directory }}"
-    state: directory
-
-- name: Create certs directory
-  file:
-    mode: 0700
-    path: "{{ letsencrypt_certs_dir }}"
-    state: directory
+  with_items:
+    - path: "{{ acme_tiny_data_directory }}"
+    - path: "{{ acme_tiny_data_directory }}/csrs"
+    - path: "{{ acme_tiny_software_directory }}"
+    - path: "{{ acme_tiny_challenges_directory }}"
+    - path: "{{ acme_tiny_data_directory }}"
+      mode: 0700
+    - path: "{{ letsencrypt_certs_dir }}"
+      mode: 0700
 
 - name: Clone acme-tiny repository
   git:
