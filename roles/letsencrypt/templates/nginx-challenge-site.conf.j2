@@ -1,9 +1,11 @@
 server {
   listen 80;
-  server_name {{ item.item.value.site_hosts | join(' ') }} {{ item.item.value.site_hosts | reverse_www | join(' ') }};
 
-  location ^~ /.well-known/acme-challenge/ {
-    alias {{ acme_tiny_challenges_directory }};
-    try_files $uri =404;
-  }
+  {% if item.item.value.www_redirect | default(true) -%}
+  server_name {{ item.item.value.site_hosts | join(' ') }} {{ item.item.value.site_hosts | reverse_www | join(' ') }};
+  {% else -%}
+  server_name {{ item.item.value.site_hosts | join(' ') }};
+  {% endif %}
+
+  include acme-challenge-location.conf;
 }

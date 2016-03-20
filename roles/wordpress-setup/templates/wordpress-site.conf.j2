@@ -97,13 +97,15 @@ server {
 {% if item.value.ssl is defined and item.value.ssl.enabled | default(False) %}
 server {
   listen 80;
+
+  {% if item.value.www_redirect | default(true) -%}
   server_name {{ item.value.site_hosts | join(' ') }} {{ item.value.site_hosts | reverse_www | join(' ') }};
+  {% else -%}
+  server_name {{ item.value.site_hosts | join(' ') }};
+  {% endif %}
 
   {% if item.value.ssl.provider | default('manual') == 'letsencrypt' -%}
-  location ^~ /.well-known/acme-challenge/ {
-    alias {{ acme_tiny_challenges_directory }};
-    try_files $uri =404;
-  }
+  include acme-challenge-location.conf;
 
   location / {
     return 301 https://$host$request_uri;
